@@ -1,5 +1,6 @@
 
 import fs from 'fs';
+import PacProxyAgent from 'pac-proxy-agent';
 import Netease from './Netease';
 import QQ from './QQ';
 import MiGu from './MiGu';
@@ -8,6 +9,7 @@ import Baidu from './Baidu';
 import Xiami from './Xiami';
 import Kuwo from './Kuwo';
 import storage from '../../common/storage';
+import cache from '../../common/cache';
 
 async function getPreferences() {
     return await storage.get('preferences') || {};
@@ -20,22 +22,31 @@ async function exe(plugins, ...args) {
         json: true,
         jar: true,
     };
-
-    if (preferences.proxy) {
-        Object.assign(
-            rpOptions,
-            {
-                proxy: preferences.proxy,
-            }
-        );
-    }
+    var proxy = preferences.proxy;
     var rp = require('request-promise-native').defaults(rpOptions);
 
     return Promise.all(
         plugins.map(e => {
+            if (proxy && e.proxy) {
+                if (proxy.endsWith('.pac')) {
+                    Object.assign(
+                        rpOptions,
+                        {
+                            agent: new PacProxyAgent(proxy)
+                        }
+                    );
+                } else {
+                    Object.assign(
+                        rpOptions,
+                        {
+                            proxy,
+                        }
+                    );
+                }
+            }
             // If a request failed will keep waiting for other possible successes, if a request successed,
             // treat it as a rejection so Promise.all immediate break.
-            return e(rp, ...args).then(
+            return e.enginner(rp, ...args).then(
                 val => Promise.reject(val),
                 err => Promise.resolve(err)
             );
@@ -46,8 +57,20 @@ async function exe(plugins, ...args) {
     );
 }
 
-async function getFlac(keyword, artists) {
-    return exe([QQ], keyword, artists, true);
+async function getFlac(keyword, artists, id) {
+    try {
+        var song = cache.get(id);
+        if (!song) {
+            song = (await exe([QQ], keyword, artists, true)) || {};
+            if (song.src) {
+                cache.set(id, song);
+            }
+        }
+
+        return song;
+    } catch (ex) {
+        // 404
+    }
 }
 
 async function loadFromLocal(id) {
@@ -70,7 +93,10 @@ async function loadFromLocal(id) {
 async function getTrack(keyword, artists, id /** This id is only work for netease music */) {
     var preferences = await getPreferences();
     var enginers = preferences.enginers;
-    var plugins = [Netease];
+    var plugins = [{
+        enginner: Netease,
+        proxy: false,
+    }];
 
     if (!enginers) {
         enginers = {
@@ -83,31 +109,59 @@ async function getTrack(keyword, artists, id /** This id is only work for neteas
         };
     }
 
-    if (enginers['QQ']) {
-        plugins.push(QQ);
+    var key = Object.keys(enginers).sort().map(e => enginers[e] ? e.toUpperCase() : '').join('') + '#' + id;
+    var song = cache.get(key);
+    if (!song) {
+        if (enginers['QQ']) {
+            plugins.push({
+                enginner: QQ,
+                proxy: true,
+            });
+        }
+
+        if (enginers['MiGu']) {
+            plugins.push({
+                enginner: MiGu,
+                proxy: true,
+            });
+        }
+
+        if (enginers['Xiami']) {
+            plugins.push({
+                enginner: Xiami,
+                proxy: true,
+            });
+        }
+
+        if (enginers['Kugou']) {
+            plugins.push({
+                enginner: Kugou,
+                proxy: true,
+            });
+        }
+
+        if (enginers['Baidu']) {
+            plugins.push({
+                enginner: Baidu,
+                proxy: true,
+            });
+        }
+
+        if (enginers['Kuwo']) {
+            plugins.push({
+                enginner: Kuwo,
+                proxy: true,
+            });
+        }
+
+        song = (await exe(plugins, keyword, artists, id)) || {};
+        // Cache the search result
+        if (song.src) {
+            cache.set(key, song);
+        }
     }
 
-    if (enginers['MiGu']) {
-        plugins.push(MiGu);
-    }
-
-    if (enginers['Xiami']) {
-        plugins.push(Xiami);
-    }
-
-    if (enginers['Kugou']) {
-        plugins.push(Kugou);
-    }
-
-    if (enginers['Baidu']) {
-        plugins.push(Baidu);
-    }
-
-    if (enginers['Kuwo']) {
-        plugins.push(Kuwo);
-    }
-
-    return exe(plugins, keyword, artists, id);
+    return song;
 }
 
 export {

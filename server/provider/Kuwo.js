@@ -3,7 +3,6 @@ import _debug from 'debug';
 import chalk from 'chalk';
 
 const debug = _debug('dev:plugin:Kuwo');
-const error = _debug('dev:plugin:Kuwo:error');
 
 export default async(request, keyword, artists) => {
     debug(chalk.black.bgGreen('💊  Loaded Kuwo music.'));
@@ -38,7 +37,6 @@ export default async(request, keyword, artists) => {
         );
 
         if (!payload) {
-            error(chalk.black.bgRed('🚧  Nothing.'));
             return Promise.reject(Error(404));
         }
 
@@ -53,7 +51,6 @@ export default async(request, keyword, artists) => {
         });
 
         if (!response || response === 'IPDeny') {
-            error(chalk.black.bgRed('🚧  Nothing.'));
             return Promise.reject(Error(404));
         }
 
@@ -61,13 +58,7 @@ export default async(request, keyword, artists) => {
             src: response,
             isFlac: response.endsWith('.aac')
         };
-
-        debug(chalk.black.bgGreen('🚚  Result >>>'));
-        debug(song);
-        debug(chalk.black.bgGreen('🚚  <<<'));
     } catch (ex) {
-        // Anti-warnning
-        error('Failed to get song: %O', ex);
         return Promise.reject(ex);
     }
 

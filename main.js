@@ -601,7 +601,6 @@ const createMainWindow = () => {
         );
 
         revertTrayIcon = args.revertTrayIcon;
-        debug(revertTrayIcon);
 
         if (!args.showTray) {
             if (tray) {
@@ -648,7 +647,6 @@ const createMainWindow = () => {
             credits: `With the invaluable help of: \n github.com/Binaryify/NeteaseCloudMusicApi`,
             version: pkg.version
         });
-        app.dock.setIcon(`${__dirname}/src/assets/dock.png`);
         app.dock.setMenu(Menu.buildFromTemplate(dockMenu));
     }
 
@@ -689,32 +687,29 @@ app.on('before-quit', e => {
     app.exit(0);
     process.exit(0);
 });
-app.on('ready', () => {
-    storage.get('preferences', (err, data) => {
-        debug(data);
-        if (!err && data) {
-            showMenuBarOnLinux = data.showMenuBarOnLinux;
-            revertTrayIcon = data.revertTrayIcon;
+app.on('ready', async() => {
+    storage.get('preferences', (err, preferences = {}) => {
+        if (err) {
+            throw err;
         }
-    });
 
-    createMainWindow();
+        var port = config.api.port || preferences.port;
 
-    storage.get('preferences', (err, data) => {
-        var port = config.api.port;
+        showMenuBarOnLinux = preferences.showMenuBarOnLinux;
+        revertTrayIcon = preferences.revertTrayIcon;
 
-        if (!err) {
-            port = data.port || port;
-
-            updater.checkForUpdates(data.autoupdate);
-        }
+        createMainWindow();
+        updater.checkForUpdates(preferences.autoupdate);
 
         axios.defaults.baseURL = `http://localhost:${port}`;
 
-        apiServer = api.listen(port, (err) => {
-            if (err) throw err;
-
-            debug(`API server is running with port ${port} 👊`);
-        });
+        apiServer = api(
+            port,
+            preferences.proxy,
+            err => {
+                if (err) throw err;
+                debug(`API server is running with port ${port} 👊`);
+            }
+        );
     });
 });

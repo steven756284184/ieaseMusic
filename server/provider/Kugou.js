@@ -4,7 +4,6 @@ import chalk from 'chalk';
 import md5 from 'md5';
 
 const debug = _debug('dev:plugin:Kugou');
-const error = _debug('dev:plugin:Kugou:error');
 
 let rp;
 
@@ -17,7 +16,6 @@ async function getURL(hash) {
 
     if (response.error
         || +response.status !== 1) {
-        error(chalk.black.bgRed('🚧  Nothing.'));
         return false;
     } else {
         return response;
@@ -45,7 +43,6 @@ export default async(request, keyword, artists) => {
 
         if (response.status !== 1
             || data.info.length === 0) {
-            error(chalk.black.bgRed('🚧  Nothing.'));
             return Promise.reject(Error(404));
         }
 
@@ -58,10 +55,6 @@ export default async(request, keyword, artists) => {
                 continue;
             }
 
-            debug(chalk.black.bgGreen('🚚  Result >>>'));
-            debug(e);
-            debug(chalk.black.bgGreen('🚚  <<<'));
-
             let song = await getURL(e['320hash'] || e['hash']);
 
             if (song) {
@@ -70,10 +63,8 @@ export default async(request, keyword, artists) => {
             }
         }
     } catch (ex) {
-        error('Failed to get song: %O', ex);
         return Promise.reject(ex);
     }
 
-    error(chalk.black.bgRed('🈚  Not Matched'));
     return Promise.reject(Error(405));
 };

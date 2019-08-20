@@ -7,6 +7,7 @@ export default theme => ({
             whiteSpace: 'nowrap',
             overflowY: 'hidden',
             overflowX: 'auto',
+            scrollBehavior: 'smooth',
         },
     },
 
@@ -23,7 +24,10 @@ export default theme => ({
         overflow: 'hidden',
 
         '& p': {
+            maxWidth: 210,
+            lineHeight: '32px',
             fontSize: 24,
+            whiteSpace: 'normal',
         },
 
         '& img:first-of-type': {

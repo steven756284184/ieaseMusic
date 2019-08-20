@@ -3,7 +3,6 @@ import _debug from 'debug';
 import chalk from 'chalk';
 
 const debug = _debug('dev:plugin:Baidu');
-const error = _debug('dev:plugin:Baidu:error');
 
 export default async(request, keyword, artists) => {
     debug(chalk.black.bgGreen('💊  Loaded Baidu music.'));
@@ -15,15 +14,17 @@ export default async(request, keyword, artists) => {
                 word: [keyword].concat(artists.split(',')).join('+'),
                 version: 2,
                 from: 0,
+                _: +new Date(),
             },
         });
         var songs = (response.data || {}).song;
         var song = (songs || []).find(e => artists.indexOf(e.artistname) > -1);
 
         if (!song) {
-            error(chalk.black.bgRed('🚧  Nothing.'));
             return Promise.reject(Error(404));
         }
+
+        console.log('done');
 
         response = await request({
             uri: 'http://music.taihe.com/data/music/fmlink',
@@ -37,7 +38,6 @@ export default async(request, keyword, artists) => {
             || +response.errorCode !== 22000
             || response.data.songList.length === 0
         ) {
-            error(chalk.black.bgRed('🚧  Nothing.'));
             return Promise.reject(Error(404));
         }
 
@@ -48,14 +48,9 @@ export default async(request, keyword, artists) => {
 
         if (!song.src) {
             return Promise.reject(Error(404));
-        } else {
-            debug(chalk.black.bgGreen('🚚  Result >>>'));
-            debug(response.data.songList[0]);
-            debug(chalk.black.bgGreen('🚚  <<<'));
         }
     } catch (ex) {
         // Anti-warnning
-        error('Failed to get song: %O', ex);
         return Promise.reject(ex);
     }
 

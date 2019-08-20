@@ -11,10 +11,12 @@ import FadeImage from 'ui/FadeImage';
 @observer
 class QRCode extends Component {
     async pleaseLogin() {
-        await this.props.me.qrcode();
-        this.props.me.waitQRCodeScan(
+        var { fm, type } = this.props.match.params;
+
+        await this.props.me.generate(+type);
+        this.props.me.waiting(
             () => {
-                this.props.history.replace(+this.props.match.params.fm ? '/fm' : '/');
+                this.props.history.replace(+fm ? '/fm' : '/');
             }
         );
     }
@@ -40,7 +42,7 @@ class QRCode extends Component {
     componentWillUnmount = () => clearInterval(this.timer);
 
     render() {
-        var { classes, me: { scaner } } = this.props;
+        var { classes, me: { qrcode } } = this.props;
 
         return (
             <div className={classes.container}>
@@ -60,11 +62,11 @@ class QRCode extends Component {
                 <figure>
                     <div className={classes.wraped}>
                         {
-                            scaner.qrcode
+                            qrcode.url
                                 ? (
                                     <FadeImage
                                         className={classes.qrcode}
-                                        src={scaner.qrcode}
+                                        src={qrcode.url}
                                     />
                                 )
                                 : (
@@ -77,7 +79,7 @@ class QRCode extends Component {
                     </div>
 
                     <figcaption>
-                        <p>Please use weChat to scan QR code to log in.</p>
+                        <p>Please use WeChat or Weibo to scan QR code to log in.</p>
                     </figcaption>
 
                     <a
